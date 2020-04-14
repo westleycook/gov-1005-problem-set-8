@@ -20,13 +20,21 @@ library(fivethirtyeight)
 
 library(skimr)
 
+# for tidy()
+
+library(broom)
+
+# for gt() tables
+
+library(gt)
+
 # loading data
 
 load("raw-data/tweetsnew.Rdata")
 
 ```
 
-## Question 1: Exploratory data analysis
+## Question 1: Exploratory Data Analysis
 
 ### 1A) Summary Statistics
 
@@ -75,7 +83,7 @@ approval_tweets %>%
 
 ```
 
-## 1B) Bivariate Correlations
+### 1B) Bivariate Correlations
 
 ```{r question_1b, echo=FALSE}
 
@@ -113,5 +121,104 @@ cor_coef <- approval_tweets %>%
 
 The correlation coefficient between the approval rating and the number of tweets is **`r cor_coef`**. There does NOT seem to be a strong relationship between tweet activity and approval ratings. (This might be expected, if we assume that 1) Trump supporters tend to enjoy or at least not be bothered by his tweets, and 2) those opposing Trump will oppose him regardless of his level of Twitter activity.)
 
+## Question 2: Multivariate Regression
+
+### 2A) Using lm()
+
+```{r question_2a, echo=FALSE}
+
+# This r chunk runs a linear regression of approval ratings on two variables,
+# total_tweets and high_q (whether the poll was high quality or not)
+
+# Using mutate() and ifelse() to create the new high_q variable
+
+new_approval_tweets <- approval_tweets %>% 
+  mutate(high_q = ifelse(grade %in% c("A+", "A", "A-"),
+                         1,
+                         0))
+
+# Running a linear regression of approval rating on total_tweets and high_q,
+# using tidy() to make the model results easy to work with and conf.int = TRUE
+# to grab the upper and lower bounds of a 95% confidence interval. Then
+# selecting just the variables of interest and mutating to round them each to a
+# few significant digits. Finally, piping them to a gt table and adding a title,
+# subtitle, and column labels
+
+new_approval_tweets %>% 
+  lm(approve ~ total_tweets + high_q, data = .) %>% 
+  tidy(conf.int = TRUE) %>% 
+  select(term, estimate, conf.low, conf.high) %>% 
+  mutate(estimate = round(estimate, digits = 3),
+         conf.low = round(conf.low, digits = 3),
+         conf.high = round(conf.high, digits = 4)) %>% 
+  gt() %>% 
+  tab_header(title = "Effect of Number of Tweets and Poll Quality on Reported 
+             Approval Rating",
+             subtitle = "Data from fivethirtyeight and Trump Tweet Archive") %>% 
+  cols_label(term = "Variable",
+             estimate = "Estimate",
+             conf.low = "Lower Bound",
+             conf.high = "Upper Bound")
+
+```
+
+### 2B) Interpreting Results
+
+The estimated average treatment effect of high_q is -2.347, which means that taking into account all other variables in the model, a high-quality poll is expected to produce an approval rating roughly 2.3 points *lower* than a low-quality poll.
+
+The frequentist interpretation of the confidence interval is that 95% of the time, using the process we used will generate an interval containing the true value of the average treatment effect of each variable on approval rating. The Bayesian interpretation is that there is a 95% chance that the interval we created here contains the true value of the average treatment effect.
+
+### 2C) Interaction Variables
+
+```{r question_2c, echo=FALSE}
+
+# This r chunk runs a new regression that includes total_tweets, high_q, and the
+# interaction between total tweets and high quality. It then prints the results
+# in a gt table like the one above
+
+# Code here was copied and pasted directly from 2a, with the following edits:
+
+# 1) the lm() call was changed from total_tweets + high_q to total_tweets *
+# high_q in order to generate the interaction term
+
+# 2) conf.high was rounded to 3 digits instead of four
+
+new_approval_tweets %>% 
+  lm(approve ~ total_tweets * high_q, data = .) %>% 
+  tidy(conf.int = TRUE) %>% 
+  select(term, estimate, conf.low, conf.high) %>% 
+  mutate(estimate = round(estimate, digits = 3),
+         conf.low = round(conf.low, digits = 3),
+         conf.high = round(conf.high, digits = 3)) %>% 
+  gt() %>% 
+  tab_header(title = "Effect of Number of Tweets and Poll Quality on Reported 
+             Approval Rating",
+             subtitle = "Data from fivethirtyeight and Trump Tweet Archive") %>% 
+  cols_label(term = "Variable",
+             estimate = "Estimate",
+             conf.low = "Lower Bound",
+             conf.high = "Upper Bound")
+
+```
+
+### 2D) Estimating Fitted Values
+
+```{r question_2d, echo=FALSE}
+
+
+
+```
+
+From September 15 - September 19, 2017, Monmouth University ran a poll that was rated A+. That week, President Trump tweeted 84 times. Write out the formula that you would use to calculate the fitted value, or predicted approval rating for that poll, given the results in your interaction model from 2C. Then, check your work by pulling the relevant fitted value using the augment command or predict. Print the code you use so that we can see both methods. Note that your values may be off by a decimal point or two if you rounded the values in your tibble above.
+
+### 2E) Multiple Regression and the Rubin Causal Model
+
+Now, imagine that you are the president’s social media secretary, and it’s your job to figure out how whether his tweeting is having a positive or negative effect on his approval ratings. He is particularly interested on determining whether his tweeting has different effects on his approval ratings among republicans and democrats.
+
+The president gives you full control over his Twitter for the next 12 weeks. You randomly assign weeks to receive high or low tweet volume. At the end of it, you want to run the following regression:
+
+randomized_approval <- approve ~ total_tweets + democrat + total_tweets:democrat
+
+In 200 words, explain how you would interpret each of the three coefficients in this regression, using the Rubin Causal Model. If it’s helpful, you can make a mock Potential Outcomes table (but it’s not necessary). Remember to specifically explain how each coefficient should be interpreted with respect to the other coefficients. Is this an explanatory or predictive model?
 
 
