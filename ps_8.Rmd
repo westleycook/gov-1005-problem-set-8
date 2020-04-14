@@ -7,5 +7,111 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+
+# standard first load
+
+library(tidyverse)
+
+# for its data
+
+library(fivethirtyeight)
+
+# for skim()
+
+library(skimr)
+
+# loading data
+
+load("raw-data/tweetsnew.Rdata")
+
 ```
+
+## Question 1: Exploratory data analysis
+
+### 1A) Summary Statistics
+
+```{r question_1a,echo=FALSE}
+
+# This r chunk finds the number of Trump tweets per week and binds that data to
+# the fivethirtyeight Trump approval rating data. It then prints a call to the
+# skim() function to view summary stats for total tweets and approval rating
+
+# Renaming the approval rating data from fivethirtyeight so it's shorter and
+# more wieldy
+
+poll <- trump_approval_poll
+
+# Finding number of tweets per week. Grouping by week and counting, then
+# renaming the n column to total_tweets as specified in question prompt
+
+tweets_by_week <- tweets %>% 
+  group_by(week) %>% 
+  count() %>% 
+  rename(total_tweets = n)
+
+# Adding week column to poll data using code from the assignment prompt
+
+poll$week <- ceiling(as.numeric(difftime(poll$end_date, 
+                                         "2017-01-01", 
+                                         units = "days")
+                                )/7)
+
+# Joining tweet data with approval rating poll data replacing all NA tweet
+# values with 0 (could have used replace_na() for this instead, but I forgot
+# that function existed until after I'd already used mutate() and tested to make
+# sure it was working, so I didn't want to change it)
+
+approval_tweets <- poll %>% 
+  left_join(tweets_by_week, by = "week") %>% 
+  mutate(total_tweets = ifelse(is.na(total_tweets), 0, total_tweets))
+
+# Selecting columns specified in the assignment prompt and printing summary
+# stats using skim()
+
+approval_tweets %>% 
+  select(total_tweets, approve) %>% 
+  skim()
+
+
+```
+
+## 1B) Bivariate Correlations
+
+```{r question_1b, echo=FALSE}
+
+# This r chunk plots approval rating by total number of tweets and grade of the
+# poll. It then finds the correlation coefficient for approval rating and number
+# of tweets
+
+# Creating the plot. Use fct_explicit_na() around grade to force it to show
+# missing values. Manually set color scheme to viridis and give the legend a
+# name (note: not an exact replicate of assignment prompt plot, because I've
+# capitalized "Grade" in the legend title, and they didn't - but I think it
+# looks better this way). All other text and formatting replicates the
+# assignment prompt plot exactly
+
+approval_tweets %>% 
+  ggplot(aes(total_tweets, approve, color = fct_explicit_na(grade))) +
+  geom_point() +
+  theme_classic() +
+  labs(title = "Trump Approval Ratings and Number of Tweets",
+       subtitle = "Data from fivethirtyeight and Trump Twitter Archive",
+       x = "Total Tweets",
+       y = "Approval Rating") +
+  scale_color_viridis_d(name = "Grade")
+
+# Finding correlation coefficient for approval rating and total tweets, then
+# pulling the value and assigning it to an object, which I insert in-line below
+
+cor_coef <- approval_tweets %>% 
+  summarize(cor = cor(total_tweets, approve)) %>% 
+  pull(cor) %>% 
+  round(digits = 3)
+
+```
+
+
+The correlation coefficient between the approval rating and the number of tweets is **`r cor_coef`**. There does NOT seem to be a strong relationship between tweet activity and approval ratings. (This might be expected, if we assume that 1) Trump supporters tend to enjoy or at least not be bothered by his tweets, and 2) those opposing Trump will oppose him regardless of his level of Twitter activity.)
+
+
 
