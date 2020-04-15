@@ -242,7 +242,10 @@ This seems to be an explanatory model, because it’s attempting to isolate the 
 
 ```{r question_3, echo=FALSE, fig.width = 9, fig.height = 6}
 
-# This r chunk FILL IN THE GAP HERE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# This r chunk creates four plots to visualize the effects of poll quality and
+# total tweets on approval rating for the first 11 months of Trump's presidency.
+# Note that fig.width and fig.height have been set; this is for proper
+# formatting of the four-plot display output created later in this chunk
 
 # Adding new columns for month to both poll data and tweets data, using code
 # from the assignment prompt
@@ -250,15 +253,21 @@ This seems to be an explanatory model, because it’s attempting to isolate the 
 new_approval_tweets$month <- ceiling(new_approval_tweets$week/4)
 tweets$month <- ceiling(tweets$week/4)
 
-# Filtering for just the first 11 months
+# Subsetting data for just the first 11 months
 
 new_approval_tweets_11m <- new_approval_tweets %>% 
   filter(month < 12) 
 
-# Plotting approval rating by poll quality for each month, replicating the top
-# right plot in the assignment prompt
+# Plotting average approval rating by poll quality for each month, replicating
+# the top right plot in the assignment prompt. Naming it p2 because of where it
+# will end up in the final display (top right). First grouping by month and poll
+# quality, then taking the average approval rating, and then piping the data
+# directly to a call of ggplot(). Moving the legend to the top as in the
+# assignment prompt, but shortening the labels in the legend so they'll both fit
+# on the plot. Adding subtitle to quickly convey the two key takeaways from the
+# visualization.
 
-p1 <- new_approval_tweets_11m %>% 
+p2 <- new_approval_tweets_11m %>% 
   group_by(month, high_q) %>% 
   summarize(avg_approve = mean(approve)) %>% 
   ggplot(aes(month, avg_approve, color = as.factor(high_q))) +
@@ -269,14 +278,19 @@ p1 <- new_approval_tweets_11m %>%
                      values = c("blue", "red"),
                      labels = c("B+ or lower", "A- or higher")) +
   labs(title = "Approval Rating by Poll Quality",
-       subtitle = "Better Polls Produce Lower Approval",
+       subtitle = "Better Polls Produce Lower Approval
+     (But the gap shrinks over time)",
        x = "Month",
        y = "Average Approval Rating")
 
 # Plotting number of tweets per month, replicating the plot from the bottom
-# right corner of the assignment prompt
+# right corner of the assignment prompt. Naming it p4 because of where it will
+# end up in the final display. I use the original tweets data, grouping by
+# month, counting to get the number of total tweets, and then filtering for just
+# months 1:11, as seen in the assignment prompt. Formatting and labels are all
+# copied from the model plot
 
-p2 <- tweets %>%
+p4 <- tweets %>%
   group_by(month) %>% 
   count() %>% 
   filter(month %in% 1:11) %>% 
@@ -288,7 +302,18 @@ p2 <- tweets %>%
        x = "Month",
        y = "Total Tweets")
 
-# maybe need to fix something here?
+# Creating new dataframe to hold results from multiple regressions using the
+# first 11 months of the new_approval_tweets data. As suggested in the prompt, I
+# group_by(month), nest(), and then use map functions to run regressions on the
+# data for each month. I deviate from the suggested course somewhat by using
+# conf.int = TRUE in my tidy() call and using map_dbl() to pull the upper and
+# lower bounds for both total_tweets and high_q directly from the reg_results
+# column, rather than using the standard error to calculate the upper and lower
+# bounds. This part gave me grief for a while, because I'd originally been
+# trying to run the regressions on tweet and approval data joined by month (not
+# week) and therefore the total_tweets estimate in the model was coming out as
+# NA. Once I used the right data, though, running the regressions was pretty
+# straightforward.
 
 multiple_regression <- new_approval_tweets_11m %>% 
   group_by(month) %>% 
@@ -315,7 +340,11 @@ multiple_regression <- new_approval_tweets_11m %>%
                                      pull(conf.high))
          )
 
-# Plotting the upper left corner
+# Replicating the upper left plot in the assignment prompt (effect of total
+# tweets on estimated approval rating, controlling for poll quality). Formatting
+# generally attempts to replicate the model plot but is not quite exact; the
+# title, for example, is one line rather than two. Naming the plot p3 because of
+# where it will end up in the final display.
 
 p3 <- multiple_regression %>% 
   ggplot(aes(month, estimate_tweets)) +
@@ -330,9 +359,13 @@ p3 <- multiple_regression %>%
        x = "Month",
        y = "Coefficient")
 
-# Plotting the bottom left corner
+# Replicating the bottom left plot in the assignment prompt (effect of poll
+# quality on estimated approval rating, controlling for total tweets). As with
+# p3, formatting generally attempts to replicate the model plot, with a few
+# small exceptions (e.g. the title being one line rather than two). Naming the
+# plot p1 because of where it will end up in the final display
 
-p4 <- multiple_regression %>% 
+p1 <- multiple_regression %>% 
   ggplot(aes(month, estimate_high_q)) +
   geom_point(color = "dark green") +
   geom_errorbar(aes(ymin = lower_high_q, ymax = upper_high_q),
@@ -344,13 +377,16 @@ p4 <- multiple_regression %>%
        x = "Month",
        y = "Coefficient")
 
-# switched order from assignment prompt to put poll quality plots on top and
-# tweet plots on bottom
+# Creating the four-plot final display. Note that I switched the order from that
+# in the assignment prompt, to put the left-hand side poll quality plot on top
+# and the tweet plot on bottom. I did this so the top row of plots would both be
+# about poll quality and the bottom row of plots would both be about total
+# tweets. I thought that made for a little bit easier viewing
 
-p4 + p1 + p3 + p2 +
+p1 + p2 + p3 + p4 +
 plot_layout(ncol = 2, widths = c(2, 1))
 
 ```
 
 ##### Worked with:
-None
+None (but Wyatt Hurt's tip on Piazza about setting fig.width and fig.height in the final code chunk helped me format a nice-looking four-plot display!)
