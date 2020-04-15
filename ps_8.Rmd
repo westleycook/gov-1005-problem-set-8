@@ -1,7 +1,7 @@
 ---
 title: "Problem Set 8"
 author: "Westley Cook"
-date: "4/15/2020"
+date: "4/14/2020"
 output: html_document
 ---
 
@@ -234,5 +234,84 @@ The coefficient for total_tweets:democrat would be the *offset* from the coeffic
 
 This seems to be an explanatory model, because it’s attempting to isolate the magnitude of the effect of each variable (total_tweets, democrat, and total_tweets:democrat). If it were a predictive model, it would care more about just getting an accurate prediction than it would about the respective magnitudes of each variable in the model.
 
+## Question 3: Many Regressions
+
+```{r question_3, echo=FALSE}
+
+# This r chunk FILL IN THE GAP HERE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+# Adding new columns for month to both poll data and tweets data, using code
+# from the assignment prompt
+
+poll$month <- ceiling(poll$week/4)
+tweets$month <- ceiling(tweets$week/4)
+
+# Filtering poll data for the first 11 months and adding high_q column using the
+# same code I used in 2a
+
+poll_11m <- poll %>% 
+  filter(month %in% 1:11) %>% 
+  mutate(high_q = ifelse(grade %in% c("A+", "A", "A-"),
+                         1,
+                         0))
+
+# Plotting approval rating by poll quality for each month, replicating the top
+# right plot in the assignment prompt
+
+poll_11m %>% 
+  group_by(month, high_q) %>% 
+  summarize(avg_approve = mean(approve)) %>% 
+  ggplot(aes(month, avg_approve, color = as.factor(high_q))) +
+  geom_line() +
+  theme_classic() +
+  theme(legend.position = "top") +
+  scale_color_manual(name = "Poll Quality",
+                     values = c("blue", "red"),
+                     labels = c("Lower than A- or missing", "Higher than A-")) +
+  labs(title = "Approval Rating by Poll Quality",
+       x = "Month",
+       y = "Average Approval Rating")
+
+# Counting the number of tweets for each month and filtering for first 11 months
+# so it matches the poll_11m data and can be easily joined later
+
+tweets_by_month <- tweets %>% 
+  group_by(month) %>% 
+  count() %>% 
+  rename(total_tweets = n) %>% 
+  filter(month %in% 1:11)
+
+# Plotting number of tweets per month, replicating the plot from the bottom
+# right corner of the assignment prompt
+
+tweets_by_month %>%
+  ggplot(aes(month, total_tweets)) +
+  geom_col() +
+  theme_classic() +
+  labs(title = "Total Tweets",
+       subtitle = "President Trump",
+       x = "Month",
+       y = "Total Tweets")
 
 
+
+
+
+```
+
+For the left hand side, we recommend following the steps below:
+
+Pipe the data into group_by(month), and then nest(), to create a tibble of tibbles. This tibble will have two columns, “month” and “data”, and 11 rows. Each row of the data column should be a list with all the observations for a given month.
+
+Create a column named mod, using map() to run lm on each row of your tibble. Run the same regression you did in 2A, using total_tweets and high_q as your explanatory variables (no interaction term).
+
+Create a column called reg results, using map() again to run tidy on the results. If you examine these results, you’ll see that for each “term” (in this case, “total_tweets”, “high_q”, and the intercept), it includes the term, the estimate, the standard error, the t statistic, and the p value. We’ll focus on the estimate and the standard error.
+
+Use map_dbl() to create columns for the estimate and standard error for your two variables of interest (total_tweets and high_q, and use those to create an upper and lower column for the 95% confidence interval for each variable. Note that this is an identical process to what you did in PS 7, just with multiple variables.
+
+Make plots of each of the coefficients.
+
+Print your plots here. We like the “patchwork” package for arranging plots.
+
+##### Worked with:
+None
